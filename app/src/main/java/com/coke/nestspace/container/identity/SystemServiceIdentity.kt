@@ -29,7 +29,6 @@ import java.lang.reflect.Modifier
 import java.lang.reflect.Proxy
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
@@ -556,7 +555,12 @@ object SystemServiceIdentity {
             )
             if (network != null) {
                 Thread({
-                    fun probe(label: String, socketFactory: javax.net.SocketFactory, host: String, port: Int) {
+                    fun probe(
+                        label: String,
+                        socketFactory: javax.net.SocketFactory,
+                        host: String,
+                        port: Int
+                    ) {
                         val started = android.os.SystemClock.elapsedRealtime()
                         val result = runCatching {
                             socketFactory.createSocket().use { socket ->
@@ -573,7 +577,7 @@ object SystemServiceIdentity {
                                 "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started}"
                         )
                     }
-                    probe("default-cloudflare", Socket::class.java.let { javax.net.SocketFactory.getDefault() }, "1.1.1.1", 443)
+                    probe("default-cloudflare", javax.net.SocketFactory.getDefault(), "1.1.1.1", 443)
                     probe("active-cloudflare", network.socketFactory, "1.1.1.1", 443)
                     val resolved = runCatching {
                         InetAddress.getAllByName("tv-api2.iq.com").firstOrNull()?.hostAddress

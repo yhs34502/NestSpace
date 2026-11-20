@@ -721,7 +721,7 @@ object SystemServiceIdentity {
          */
         private fun rewriteMediaSessionToken(value: Any?): Any? {
             if (value == null ||
-                value.javaClass.name != "android.media.session.MediaSession\\$Token"
+                value.javaClass.name != "android.media.session.MediaSession\$Token"
             ) return null
 
             return runCatching {

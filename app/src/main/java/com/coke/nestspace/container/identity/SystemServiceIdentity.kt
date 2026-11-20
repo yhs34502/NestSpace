@@ -705,8 +705,49 @@ object SystemServiceIdentity {
                 is Iterable<*> -> value.map(::rewriteResult)
                 else -> rewritePackageOps(value)
                     ?: rewriteAttributionSource(value, host, target)
+                    ?: rewriteMediaSessionToken(value)
                     ?: value
             }
+        }
+
+        /**
+         * MediaSessionManager returns MediaSession.Token objects containing an
+         * ISessionController Binder. MediaController later calls that Binder
+         * directly (for example sendCommand) with the virtual target package.
+         * The generic service proxy cannot see those calls because they bypass
+         * ISessionManager after the token has been returned. Wrap the embedded
+         * controller so its package arguments are rewritten at the final
+         * system_server boundary, just like other identity-sensitive services.
+         */
+        private fun rewriteMediaSessionToken(value: Any?): Any? {
+            if (value == null ||
+                value.javaClass.name != "android.media.session.MediaSession\$Token"
+            ) return null
+
+            return runCatching {
+                val controllerInterface = findClass(
+                    "android.media.session.ISessionController"
+                ) ?: return@runCatching null
+                val controllerField = assignableField(
+                    value.javaClass,
+                    controllerInterface
+                ) ?: return@runCatching null
+                val controller = controllerField.get(value) ?: return@runCatching value
+                if (!isIdentityProxy(controller)) {
+                    controllerField.set(
+                        value,
+                        Proxy.newProxyInstance(
+                            controllerInterface.classLoader,
+                            arrayOf(controllerInterface),
+                            IdentityRewriteHandler(controller)
+                        )
+                    )
+                    Log.d(TAG, "wrapped MediaSession.Token ISessionController")
+                }
+                value
+            }.onFailure {
+                Log.w(TAG, "wrap MediaSession.Token controller failed", it)
+            }.getOrNull()
         }
 
         private fun rewriteAttributionSource(

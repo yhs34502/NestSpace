@@ -214,6 +214,10 @@ object SystemServiceIdentity {
                 )
             }.onFailure { Log.w(TAG, "ConnectivityManager proxy failed", it) }
         }
+        // Capture what the container process sees before target SDKs begin
+        // their own connectivity checks. This distinguishes a missing Android
+        // network from an application-level HTTP/TLS failure.
+        logConnectivitySnapshot(contexts)
         if (!clipboardInstalled) {
             clipboardInstalled = true
             runCatching {
@@ -514,6 +518,53 @@ object SystemServiceIdentity {
     }
 
     /** Patch a framework manager that caches its AIDL service in a final field. */
+    private fun logConnectivitySnapshot(contexts: List<Context>) {
+        val context = contexts.lastOrNull() ?: return
+        runCatching {
+            val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE)
+                as? android.net.ConnectivityManager
+                ?: error("ConnectivityManager unavailable")
+            val network = manager.activeNetwork
+            val capabilities = network?.let(manager::getNetworkCapabilities)
+            val info = runCatching { manager.activeNetworkInfo }.getOrNull()
+            val transports = buildList {
+                if (capabilities?.hasTransport(
+                        android.net.NetworkCapabilities.TRANSPORT_WIFI
+                    ) == true
+                ) add("wifi")
+                if (capabilities?.hasTransport(
+                        android.net.NetworkCapabilities.TRANSPORT_CELLULAR
+                    ) == true
+                ) add("cellular")
+                if (capabilities?.hasTransport(
+                        android.net.NetworkCapabilities.TRANSPORT_ETHERNET
+                    ) == true
+                ) add("ethernet")
+                if (capabilities?.hasTransport(
+                        android.net.NetworkCapabilities.TRANSPORT_VPN
+                    ) == true
+                ) add("vpn")
+            }
+            val processName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                android.app.Application.getProcessName()
+            } else {
+                runCatching {
+                    java.io.File("/proc/self/cmdline").readText().trim('\u0000')
+                }.getOrDefault("?")
+            }
+            Log.i(
+                TAG,
+                "container network snapshot process=$processName " +
+                    "active=${network != null} connected=${info?.isConnected} " +
+                    "internet=${capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)} " +
+                    "validated=${capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)} " +
+                    "transports=${transports.joinToString(",")}"
+            )
+        }.onFailure {
+            Log.w(TAG, "container network snapshot failed", it)
+        }
+    }
+
     private fun installCachedManagerProxy(
         contexts: List<Context>,
         serviceName: String,

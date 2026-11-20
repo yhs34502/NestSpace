@@ -233,3 +233,82 @@ These outputs are needed to distinguish the one-task observation from process ar
 ## 8. Decision
 
 Proceed with a new No-root virtualization engine. Do not start by patching NestSpace's existing engine or by integrating the stale public VirtualApp branch. First complete the live Parallel Space task/process measurement, then implement M1 as a separately testable engine module.
+
+
+## 9. Direct inspection of the user's Parallel Space APK (version 4.0.9631)
+
+Source artifact: user-provided `base.apk` from package `com.lbe.parallel.intl`. SHA-256:
+`f82aaf06eda1d82080cf764ae9f37f698e824a7ff2854c6731e79fab0c5d7597`
+
+This section records facts extracted from that exact APK, not assumptions based on the Play Store listing.
+
+### 9.1 Manifest facts
+
+- Package: `com.lbe.parallel.intl`
+- Version name: `4.0.9631`
+- Application class: `com.lbe.parallel.DAApp`
+- Manifest declares 100 Activity proxy components: `ActivityProxy$P0` through `ActivityProxy$P99`.
+- Manifest declares 100 Service proxy components: `ServiceProxy$P0` through `ServiceProxy$P99`.
+- Manifest declares 100 Provider proxy components: `ProviderProxy$P0` through `ProviderProxy$P99`.
+- These component families use the same process-name slots `:P0` through `:P99`. This is **100 shared process slots**, not 300 distinct processes.
+- Activity proxy components declare the common task affinity `com.lbe.doubleagent.app`.
+- The APK also declares a middleware/delegate arrangement:
+  - `MiddlewareActivity` is marked `multiprocess=true`.
+  - `ExitMiddlewareActivity` runs in `:mdserver`, uses task affinity `com.lbe.parallel.launch_delegate`, and launchMode value 2 (singleTask).
+  - `LaunchDelegateActivity` uses the same launch affinity.
+  - `LocalProxyService` runs in `:mdserver`.
+
+The manifest proves that these proxy slots and affinities are declared. It does not by itself prove which slot is selected for a given guest launch or exactly how the one-Recent behavior is achieved.
+
+### 9.2 DEX evidence
+
+The APK contains eight DEX files (`classes.dex` through `classes8.dex`). String/class-reference inspection found names and symbols including:
+
+- `DAActivityManager`
+- `DAProcessRecord`
+- `DAPackageManager`
+- `createActivityProxyIntent`
+- `decodeActivityProxyIntent`
+- `createBindServiceProxyIntent`
+- `createServiceProxyIntent`
+- `decodeServiceProxyIntent`
+- `createProxyProviderAuthority`
+- `getPidFromProxyActivity`
+- `getPidFromProxyService`
+- references to `ActivityThread`, `IActivityManager`, `IPackageManager`, `BaseDexClassLoader`, and `DexClassLoader`.
+
+This supports the existence of Activity/Service/Provider proxy routing and framework/class-loader integration. Since this environment did not have JADX/APKTool available and network access was unavailable, this pass is a DEX string/reference inspection, **not a full decompilation of method bodies**. Exact control flow and call order remain to be established.
+
+### 9.3 Native evidence
+
+The ARM64 `libdaclient_64.so` exports/references symbols including:
+
+- `A64HookFunction`, `A64HookFunctionV`
+- `getArtMethod`, `getOriginalMethod`
+- `hook_aarch64`
+- `SubstrateHookMemory`
+- references to `/apex/com.android.art/lib64/libart.so`
+- `nativeProcessMethods`, `nativeDexHook`, `nativeHookOpenNativeLibrary`.
+
+The ARM64 `libcompatible_64.so` includes JNI entry points such as `native_doEnable` and `JNI_OnLoad`. The ARM64 `libvdex2dex_64.so` exports DEX/VDEX parsing and decompilation-related symbols such as `vdex2Dex` and `dexDecompilerV10_decompile`.
+
+This is strong evidence that the product bundles native ART/method-hooking machinery. It does not prove that every hook is active on Android 14, nor that every guest process uses every native library.
+
+### 9.4 Consequences for NestSpace design
+
+1. Model proxy slots as a shared pool across Activity, Service and Provider roles. Do not mistake the three 100-entry component families for 300 process slots.
+2. Preserve a common guest Activity task affinity in the M1 prototype, then verify actual task behavior using `dumpsys activity`. A common affinity is a clue, not proof of a single task.
+3. Treat `:mdserver`-style middleware/delegate process separation as a candidate architecture for later milestones, not a requirement for the first proof of concept.
+4. Do not attempt to reproduce native ART hooks before the Java-side Task/Activity proof of concept is measured. Native hooks are a high-risk compatibility layer and must be justified by specific missing behavior.
+5. The user's one-Recent observation still needs live task/process evidence. This APK inspection does not replace the requested `dumpsys activity recents`, `dumpsys activity activities`, and process-list captures.
+
+### 9.5 Immediate reverse-engineering targets
+
+Prioritize full method-body decompilation of:
+- `DAActivityManager` and `DAProcessRecord`
+- proxy Activity implementation and the slot-allocation path
+- intent encode/decode methods
+- `DAPackageManager`
+- middleware/delegate launch path
+
+Then correlate those findings with the live device task/process dumps before translating the design into NestSpace code.

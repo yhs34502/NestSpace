@@ -57,30 +57,47 @@ object BrowserProxyManager {
      */
     fun apply(context: Context, onSettled: ((Status) -> Unit)? = null) {
         val app = context.applicationContext
-        if (!shouldApplyInProcess(app)) {
-            Log.d(TAG, "WebView proxy skipped in isolated process")
+        if (!isHostProcess(app)) {
+            Log.d(TAG, "WebView proxy skipped outside host process")
             return
         }
+        dispatchApply(app, onSettled)
+    }
+
+    /**
+     * Container processes have a separate WebView data directory. This entry
+     * point is called only after ContainerSession has assigned that directory,
+     * so ProxyController may now be initialized safely in the slot process.
+     */
+    fun applyForContainer(context: Context, onSettled: ((Status) -> Unit)? = null) {
+        val app = context.applicationContext
+        val processName = currentProcessName(app)
+        if (!processName.startsWith("${app.packageName}:c")) {
+            Log.w(TAG, "container WebView proxy rejected for process=$processName")
+            return
+        }
+        dispatchApply(app, onSettled)
+    }
+
+    private fun dispatchApply(context: Context, onSettled: ((Status) -> Unit)?) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            applyOnMain(app, onSettled)
+            applyOnMain(context, onSettled)
         } else {
-            mainHandler.post { applyOnMain(app, onSettled) }
+            mainHandler.post { applyOnMain(context, onSettled) }
         }
     }
 
-    private fun shouldApplyInProcess(context: Context): Boolean {
-        val processName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    private fun isHostProcess(context: Context): Boolean =
+        currentProcessName(context) == context.packageName
+
+    private fun currentProcessName(context: Context): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Application.getProcessName()
         } else {
             runCatching {
                 File("/proc/self/cmdline").readText().trim('\u0000')
             }.getOrDefault("")
         }
-        // Container slots must wait until ContainerSession assigns their
-        // isolated WebView data-directory suffix. Initializing ProxyController
-        // here would lock :c1 to the host's default WebView directory.
-        return processName == context.packageName
-    }
 
     private fun applyOnMain(context: Context, onSettled: ((Status) -> Unit)?) {
         val supported = isSupported()

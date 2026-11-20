@@ -1,6 +1,7 @@
 package com.coke.nestspace.container
 
 import com.coke.nestspace.BuildConfig
+import com.coke.nestspace.browser.BrowserProxyManager
 import com.coke.nestspace.i18n.AppLanguage
 import com.coke.nestspace.runtime.RuntimeApplicationSpec
 import com.coke.nestspace.runtime.RuntimeHostHooks
@@ -1745,7 +1746,6 @@ class ContainerSession private constructor(
             // creating LoadedApk. Manually attached virtual applications skip
             // that framework path, so run the hook before attaching the target.
             loader = ContainerCompat.installRuntimeClassLoader(spec, loader, appInfo)
-            exposeVirtualClassPath(loader, installLayout)
             // Some native packers replace the VM hidden-API policy while
             // installing their runtime loader. Re-apply the exemption before
             // the Activity attachment path uses framework-private fields.
@@ -1789,6 +1789,9 @@ class ContainerSession private constructor(
                             TAG,
                             "WebView data directory suffix configured process=${spec.targetProcessName}"
                         )
+                        // Apply the saved WebView proxy only after this slot has
+                        // claimed its isolated data directory.
+                        BrowserProxyManager.apply(host.applicationContext)
                     }
                     .onFailure {
                         Log.w(TAG, "WebView data directory suffix failed", it)

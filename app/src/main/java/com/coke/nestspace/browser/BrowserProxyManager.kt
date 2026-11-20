@@ -76,8 +76,10 @@ object BrowserProxyManager {
                 File("/proc/self/cmdline").readText().trim('\u0000')
             }.getOrDefault("")
         }
-        return processName == context.packageName ||
-            processName == context.packageName + ":c1"
+        // Container slots must wait until ContainerSession assigns their
+        // isolated WebView data-directory suffix. Initializing ProxyController
+        // here would lock :c1 to the host's default WebView directory.
+        return processName == context.packageName
     }
 
     private fun applyOnMain(context: Context, onSettled: ((Status) -> Unit)?) {

@@ -55,12 +55,34 @@ internal object ActivityThreadProviderRegistry {
         val providerClass = Class.forName("android.content.IContentProvider")
         val holderClass = Class.forName("android.app.ContentProviderHolder")
         val recordClass = Class.forName("android.app.ActivityThread\$ProviderClientRecord")
-        val recordConstructor = recordClass.getDeclaredConstructor(
-            Array<String>::class.java,
-            providerClass,
-            ContentProvider::class.java,
-            holderClass
-        ).apply { isAccessible = true }
+        // AOSP Android 14 uses the four-argument form. Some OEM framework
+        // builds alter this hidden implementation detail, so discover a
+        // compatible constructor instead of hard-coding one signature.
+        val recordConstructor = recordClass.declaredConstructors
+            .firstOrNull { constructor ->
+                val types = constructor.parameterTypes
+                types.size == 4 &&
+                    types[0] == Array<String>::class.java &&
+                    types[1].isAssignableFrom(providerClass) &&
+                    types[2].isAssignableFrom(ContentProvider::class.java) &&
+                    types[3].isAssignableFrom(holderClass)
+            }
+            ?: recordClass.declaredConstructors.firstOrNull { constructor ->
+                val types = constructor.parameterTypes
+                types.size == 3 &&
+                    types[0] == Array<String>::class.java &&
+                    types[1].isAssignableFrom(providerClass) &&
+                    types[2].isAssignableFrom(ContentProvider::class.java)
+            }
+            ?: error(
+                "unsupported ProviderClientRecord constructor: " +
+                    recordClass.declaredConstructors.joinToString { constructor ->
+                        constructor.parameterTypes.joinToString(
+                            prefix = "(", postfix = ")"
+                        ) { it.simpleName }
+                    }
+            )
+        recordConstructor.isAccessible = true
 
         Registry(
             providerMap = providerMap,
@@ -110,12 +132,20 @@ internal object ActivityThreadProviderRegistry {
                     Log.w(TAG, "authority already registered in host: $authority")
                     return@runCatching
                 }
-                val record = reg.recordConstructor.newInstance(
-                    arrayOf(authority),
-                    transport,
-                    provider,
-                    holder
-                )
+                val record = if (reg.recordConstructor.parameterTypes.size == 4) {
+                    reg.recordConstructor.newInstance(
+                        arrayOf(authority),
+                        transport,
+                        provider,
+                        holder
+                    )
+                } else {
+                    reg.recordConstructor.newInstance(
+                        arrayOf(authority),
+                        transport,
+                        provider
+                    )
+                }
                 reg.providerMap[key] = record
                 keys += key
                 Log.d(TAG, "registered $authority -> ${providerInfo.name}")

@@ -27,6 +27,8 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Proxy
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
@@ -102,7 +104,6 @@ object SystemServiceIdentity {
     private var alarmInstalled = false
     private var mediaSessionInstalled = false
     private var appOpsInstalled = false
-    private var connectivityInstalled = false
     private var clipboardInstalled = false
     private var inputMethodInstalled = false
 
@@ -203,20 +204,11 @@ object SystemServiceIdentity {
             runCatching { installAppOpsProxy(contexts) }
                 .onFailure { Log.w(TAG, "AppOpsManager proxy failed", it) }
         }
-        if (!connectivityInstalled) {
-            connectivityInstalled = true
-            runCatching {
-                installCachedManagerProxy(
-                    contexts,
-                    Context.CONNECTIVITY_SERVICE,
-                    "android.net.IConnectivityManager",
-                    "ConnectivityManager"
-                )
-            }.onFailure { Log.w(TAG, "ConnectivityManager proxy failed", it) }
-        }
-        // Capture what the container process sees before target SDKs begin
-        // their own connectivity checks. This distinguishes a missing Android
-        // network from an application-level HTTP/TLS failure.
+        // ConnectivityManager is intentionally left unproxied. Its Context
+        // instances are created from the host ContextImpl and already carry the
+        // host package attribution accepted for this UID. Rewriting every
+        // ConnectivityManager call adds risk to NetworkCallback/Network routing
+        // without helping raw socket traffic.
         logConnectivitySnapshot(contexts)
         if (!clipboardInstalled) {
             clipboardInstalled = true
@@ -554,12 +546,48 @@ object SystemServiceIdentity {
             }
             Log.i(
                 TAG,
-                "container network snapshot process=$processName " +
+                "container network snapshot process=$processName uid=${Process.myUid()} " +
                     "active=${network != null} connected=${info?.isConnected} " +
                     "internet=${capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)} " +
                     "validated=${capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)} " +
-                    "transports=${transports.joinToString(",")}"
+                    "transports=${transports.joinToString(",")} " +
+                    "proxySelector=${runCatching { java.net.ProxySelector.getDefault()?.javaClass?.name }.getOrNull()}"
             )
+            if (network != null) {
+                Thread({
+                    fun probe(
+                        label: String,
+                        socketFactory: javax.net.SocketFactory,
+                        host: String,
+                        port: Int
+                    ) {
+                        val started = android.os.SystemClock.elapsedRealtime()
+                        val result = runCatching {
+                            socketFactory.createSocket().use { socket ->
+                                socket.connect(InetSocketAddress(host, port), 2500)
+                            }
+                            "connected"
+                        }.fold(
+                            onSuccess = { it },
+                            onFailure = { "${it.javaClass.simpleName}: ${it.message}" }
+                        )
+                        Log.i(
+                            TAG,
+                            "container tcp probe=$label destination=$host:$port result=$result " +
+                                "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started}"
+                        )
+                    }
+                    probe("default-cloudflare", javax.net.SocketFactory.getDefault(), "1.1.1.1", 443)
+                    probe("active-cloudflare", network.socketFactory, "1.1.1.1", 443)
+                    val resolved = runCatching {
+                        InetAddress.getAllByName("tv-api2.iq.com").firstOrNull()?.hostAddress
+                    }.getOrNull()
+                    Log.i(TAG, "container dns probe host=tv-api2.iq.com address=${resolved ?: "failed"}")
+                    if (resolved != null) {
+                        probe("active-iqiyi", network.socketFactory, resolved, 443)
+                    }
+                }, "NestSpaceNetworkProbe").apply { isDaemon = true }.start()
+            }
         }.onFailure {
             Log.w(TAG, "container network snapshot failed", it)
         }

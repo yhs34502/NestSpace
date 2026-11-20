@@ -1791,7 +1791,7 @@ class ContainerSession private constructor(
                         )
                         // Apply the saved WebView proxy only after this slot has
                         // claimed its isolated data directory.
-                        BrowserProxyManager.apply(host.applicationContext)
+                        BrowserProxyManager.applyForContainer(host.applicationContext)
                     }
                     .onFailure {
                         Log.w(TAG, "WebView data directory suffix failed", it)

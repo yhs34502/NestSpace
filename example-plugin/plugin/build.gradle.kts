@@ -227,7 +227,14 @@ val androidSdk = providers.environmentVariable("ANDROID_HOME")
         ?.firstOrNull { it.startsWith("sdk.dir=") }
         ?.substringAfter("sdk.dir=")
         ?.let(::file)
-val d8 = androidSdk?.resolve("build-tools/36.0.0/d8")
+val d8ExecutableName = if (
+    System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+) {
+    "d8.bat"
+} else {
+    "d8"
+}
+val d8 = androidSdk?.resolve("build-tools/36.0.0/$d8ExecutableName")
 val androidJar = androidSdk?.resolve("platforms/android-37.0/android.jar")
 val stageDir = layout.buildDirectory.dir("plugin-package")
 val aarFile = layout.buildDirectory.file("outputs/aar/plugin-debug.aar")

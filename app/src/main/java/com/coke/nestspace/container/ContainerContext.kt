@@ -513,8 +513,37 @@ class ContainerContext(
     override fun getExternalMediaDirs(): Array<File?> =
         arrayOf(dir("external-media"))
 
-    override fun createPackageContext(packageName: String, flags: Int): Context =
-        if (packageName == targetPackage) this else super.createPackageContext(packageName, flags)
+    override fun createPackageContext(packageName: String, flags: Int): Context {
+        // A target SDK commonly asks for its own package context during
+        // initialization. Returning this context is essential: delegating to
+        // ContextImpl would resolve the virtual package through the host
+        // PackageManager/LoadedApk and can enter framework/native package
+        // lookup paths that are not valid for a package installed only here.
+        if (packageName == targetPackage) {
+            android.util.Log.d(
+                "ContainerContext",
+                "createPackageContext resolved virtual self package=$packageName"
+            )
+            return this
+        }
+
+        // The host package is the only real package whose context is already
+        // represented by this process. Avoid asking the target-facing wrapper
+        // to resolve it again through the framework.
+        if (packageName == HostIdentity.packageName) {
+            android.util.Log.d(
+                "ContainerContext",
+                "createPackageContext resolved host package=$packageName"
+            )
+            return baseContext.applicationContext
+        }
+
+        android.util.Log.d(
+            "ContainerContext",
+            "createPackageContext delegate package=$packageName flags=0x${flags.toString(16)}"
+        )
+        return baseContext.createPackageContext(packageName, flags)
+    }
 
     override fun getPackageCodePath(): String = baseApkPath
 

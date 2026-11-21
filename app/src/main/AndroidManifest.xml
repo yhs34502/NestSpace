@@ -168,7 +168,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c1"
-            android:taskAffinity="com.coke.nestspace.c1" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot2Activity"
@@ -179,7 +179,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c2"
-            android:taskAffinity="com.coke.nestspace.c2" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot3Activity"
@@ -190,7 +190,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c3"
-            android:taskAffinity="com.coke.nestspace.c3" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot4Activity"
@@ -201,7 +201,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c4"
-            android:taskAffinity="com.coke.nestspace.c4" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot5Activity"
@@ -212,7 +212,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c5"
-            android:taskAffinity="com.coke.nestspace.c5" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot6Activity"
@@ -223,7 +223,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c6"
-            android:taskAffinity="com.coke.nestspace.c6" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot7Activity"
@@ -234,7 +234,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c7"
-            android:taskAffinity="com.coke.nestspace.c7" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot8Activity"
@@ -245,7 +245,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c8"
-            android:taskAffinity="com.coke.nestspace.c8" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot9Activity"
@@ -256,7 +256,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c9"
-            android:taskAffinity="com.coke.nestspace.c9" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot10Activity"
@@ -267,7 +267,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c10"
-            android:taskAffinity="com.coke.nestspace.c10" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot11Activity"
@@ -278,7 +278,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c11"
-            android:taskAffinity="com.coke.nestspace.c11" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot12Activity"
@@ -289,7 +289,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c12"
-            android:taskAffinity="com.coke.nestspace.c12" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot13Activity"
@@ -300,7 +300,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c13"
-            android:taskAffinity="com.coke.nestspace.c13" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot14Activity"
@@ -311,7 +311,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c14"
-            android:taskAffinity="com.coke.nestspace.c14" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot15Activity"
@@ -322,7 +322,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c15"
-            android:taskAffinity="com.coke.nestspace.c15" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity
             android:name=".container.StageASlot16Activity"
@@ -333,7 +333,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
             android:process=":c16"
-            android:taskAffinity="com.coke.nestspace.c16" />
+            android:taskAffinity="com.coke.nestspace" />
 
         <activity android:name=".container.StageAIsolatedSlot1Activity"
             android:supportsPictureInPicture="true" android:resizeableActivity="true"
